@@ -18,6 +18,26 @@ npm install mysql2
 I server.js: 
 
 ```
+import express from "express";
+import bodyParser from "body-parser";
+import mysql from "mysql2/promise";
+import bcrypt from "bcrypt";
+
+const app = express();
+const port = 3001;
+
+// middleware
+app.use(bodyParser.json());
+
+// connect to DB
+const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "root",
+  database: "bank",
+  port: 8889,
+});
+
 // Databas uppkoppling
 const pool = mysql.createPool({
     host: "localhost",
@@ -33,7 +53,9 @@ async function query(sql, params) {
     return results;
   }
 
-
+app.listen(port, () => {
+  console.log("Listening on port: " + port);
+});
 ```
 
 ## SQL-förfrågningar enligt CRUD
