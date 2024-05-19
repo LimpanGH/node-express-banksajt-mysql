@@ -21,7 +21,6 @@ I server.js:
 import express from "express";
 import bodyParser from "body-parser";
 import mysql from "mysql2/promise";
-import bcrypt from "bcrypt";
 
 const app = express();
 const port = 3001;
