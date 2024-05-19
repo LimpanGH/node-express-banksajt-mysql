@@ -34,7 +34,7 @@ const pool = mysql.createPool({
     user: "root",
     password: "root",
     database: "banksajt",
-    port: 8889, 
+    port: 8889, // Obs! 3306 för windowsanvändare
   });
 
  // Funktion för att göra förfrågan till databas
