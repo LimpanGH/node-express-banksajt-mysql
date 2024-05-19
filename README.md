@@ -28,22 +28,13 @@ const port = 3001;
 // middleware
 app.use(bodyParser.json());
 
-// connect to DB
-const pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "bank",
-  port: 8889,
-});
-
 // Databas uppkoppling
 const pool = mysql.createPool({
     host: "localhost",
     user: "root",
     password: "root",
     database: "banksajt",
-    port: 8889, //windows användare port 8888
+    port: 8889, 
   });
 
  // Funktion för att göra förfrågan till databas
