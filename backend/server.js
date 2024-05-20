@@ -1,146 +1,107 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import mysql from 'mysql2/promise';
 
 const app = express();
+const port = process.env.PORT || 3000; // Här deklareras port en gång
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Generera engångslösenord
-function generateOTP() {
-  // Generera en sexsiffrig numerisk OTP
-  const otp = Math.floor(100000 + Math.random() * 900000);
-  return otp.toString();
+// Databas-uppkoppling
+const pool = mysql.createPool({
+  host: 'localhost',
+  user: 'root',
+  password: 'root',
+  database: 'banksajt',
+  port: 8889, // Obs! 3306 för Windows-användare
+});
+
+// Funktion för att göra förfrågan till databas
+async function query(sql, params) {
+  const [results] = await pool.execute(sql, params);
+  return results;
 }
 
-// Arrayer för att lagra användare, konton och sessioner
-const users = [];
-const account = [];
-const sessions = [];
+// --------------------
+// CRUD-operationer för användare
 
-// Funktion för att logga aktuella data
-function logCurrentData() {
-  console.log('Users', users);
-  console.log('Accounts', account);
-  console.log('Sessions', sessions);
-}
-
-// Skriv dina routes
-app.post('/users', (req, res) => {
+// CREATE
+app.post('/users', async (req, res) => {
   const { username, password } = req.body;
 
-  // Check if the username already exists
-  const existingUser = users.find((user) => user.username === username);
-  if (existingUser) {
-    return res.status(400).send('Username already exists');
+  try {
+    const existingUser = await query("SELECT * FROM users WHERE username = ?", [username]);
+    if (existingUser.length > 0) {
+      return res.status(400).send('Username already exists');
+    }
+
+    await query("INSERT INTO users (username, password) VALUES (?, ?)", [username, password]);
+    res.status(201).send('User created');
+  } catch (error) {
+    res.status(500).send('Server error');
   }
-
-  // Create a new account for the user with initial balance 0
-  const newAccount = { username, balance: 0 };
-
-  // Push the new account into the account array
-  account.push(newAccount);
-
-  // Push the new user into the users array
-  users.push({ username, password });
-  sessions.push({password})
-
-  res.status(201).send('User created');
-  // Anropa logCurrentData() efter att användaren har lagts till
-  logCurrentData();
 });
 
-app.post('/sessions', (req, res) => {
+// READ ALL
+app.get('/users', async (req, res) => {
+  try {
+    const users = await query("SELECT * FROM users");
+    res.json(users);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+// READ SPECIFIC
+app.get('/users/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await query("SELECT * FROM users WHERE userId = ?", [id]);
+    if (user.length === 0) {
+      return res.status(404).send('User not found');
+    }
+    res.json(user[0]);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+// UPDATE
+app.put('/users/:id', async (req, res) => {
+  const { id } = req.params;
   const { username, password } = req.body;
-  // Kontrollera om användaren finns i users-arrayen
-  const user = users.find((user) => user.username === username && user.password === password);
-  if (user) {
-    // Generera en session-id och lägg till den i sessions-arrayen
-    const sessionId = generateOTP();
-    sessions.push({ sessionId, username });
-    res.status(200).json({ sessionId });
-  } else {
-    res.status(401).send('Invalid username or password');
-  }
-  logCurrentData();
-});
 
-
-app.post('/me/account', (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).send('Invalid authorization header');
-  }
-
-  const sessionToken = authHeader.split(' ')[1];
-
-  const session = sessions.find((session) => session.sessionId === sessionToken);
-
-  if (session) {
-    const username = session.username;
-    const userAccount = account.find((acc) => acc.username === username);
-    console.log('Found account', userAccount);
-    if (userAccount) {
-      res.json({ balance: userAccount.balance });
-    } else {
-      res.status(404).send('Account not found');
+  try {
+    const result = await query("UPDATE users SET username = ?, password = ? WHERE userId = ?", [username, password, id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).send('User not found');
     }
-  } else {
-    res.status(401).send('Invalid session token');
+    res.send('User updated');
+  } catch (error) {
+    res.status(500).send('Server error');
   }
-  logCurrentData();
 });
 
+// DELETE
+app.delete('/users/:id', async (req, res) => {
+  const { id } = req.params;
 
-app.post('/me/account/transactions', (req, res) => {
-
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).send('Invalid authorization header');
-  }
-  const sessionToken = req.headers.authorization.split(' ')[1];
-
-  const session = sessions.find((session) => session.sessionId === sessionToken);
-
-  if (!session) {
-    return res.status(401).send('Invalid session token');
-  }
-
-  const username = session.username;
-  const userAccount = account.find((acc) => acc.username === username);
-
-  if (!userAccount) {
-    return res.status(404).send('Account not found');
-  }
-
-  const { type, amount } = req.body;
-
-  if (type !== 'deposit' && type !== 'withdraw') {
-    return res.status(400).send('Invalid transaction type');
-  }
-
-  if (typeof amount !== 'number' || amount <= 0) {
-    return res.status(400).send('Invalid transaction amount');
-  }
-
-  if (type === 'deposit') {
-    userAccount.balance += amount;
-  } else {
-    if (userAccount.balance < amount) {
-      return res.status(400).send('Insufficient funds');
+  try {
+    const result = await query("DELETE FROM users WHERE userId = ?", [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).send('User not found');
     }
-    userAccount.balance -= amount;
+    res.send('User deleted');
+  } catch (error) {
+    res.status(500).send('Server error');
   }
-
-  // res.status(200).send('Transaction successful');
-  res.status(200).send({ message: 'Transaction successful', balance: userAccount.balance });
 });
 
-
-// PORT
-const port = process.env.PORT || 3000;
+// --------------------
 
 // Starta servern
 app.listen(port, () => {
