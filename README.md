@@ -1,3 +1,5 @@
+## EJ klar, det finns en solution på https://github.com/LimpanGH/node-express-banksajt-mysql-solution
+
 # Skapa backend i Node.js och Express för Banksajt - med MySQL-databas
 
 ### Köra applikationen:
