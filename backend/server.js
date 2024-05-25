@@ -4,106 +4,98 @@ import cors from 'cors';
 import mysql from 'mysql2/promise';
 
 const app = express();
-const port = process.env.PORT || 3000; // Här deklareras port en gång
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Databas-uppkoppling
+// Database connection
 const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: 'root',
   database: 'banksajt',
-  port: 8889, // Obs! 3306 för Windows-användare
+  port: 8889,
 });
 
-// Funktion för att göra förfrågan till databas
+// Function to perform database query
 async function query(sql, params) {
   const [results] = await pool.execute(sql, params);
   return results;
 }
 
-// --------------------
-// CRUD-operationer för användare
+// Function to generate OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // CREATE
 app.post('/users', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const existingUser = await query("SELECT * FROM users WHERE username = ?", [username]);
-    if (existingUser.length > 0) {
-      return res.status(400).send('Username already exists');
-    }
+    // Insert user
+    const userResult = await query('INSERT INTO users (username, password) VALUES (?, ?)', [
+      username,
+      password,
+    ]);
 
-    await query("INSERT INTO users (username, password) VALUES (?, ?)", [username, password]);
-    res.status(201).send('User created');
+    const userId = userResult.insertId;
+
+    // Insert account
+    const accountResult = await query('INSERT INTO account (user_Id, amount) VALUES (?, ?)', [
+      userId,
+      0,
+    ]);
+
+    const accountId = accountResult.insertId;
+
+    // Respond with success
+    res.status(201).json({
+      message: 'User created',
+      userId: userId,
+      accountId: accountId,
+    });
   } catch (error) {
-    res.status(500).send('Server error');
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: 'Error creating user', error: error.message });
   }
 });
 
-// READ ALL
-app.get('/users', async (req, res) => {
-  try {
-    const users = await query("SELECT * FROM users");
-    res.json(users);
-  } catch (error) {
-    res.status(500).send('Server error');
-  }
-});
-
-// READ SPECIFIC
-app.get('/users/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const user = await query("SELECT * FROM users WHERE userId = ?", [id]);
-    if (user.length === 0) {
-      return res.status(404).send('User not found');
-    }
-    res.json(user[0]);
-  } catch (error) {
-    res.status(500).send('Server error');
-  }
-});
-
-// UPDATE
-app.put('/users/:id', async (req, res) => {
-  const { id } = req.params;
+// Login
+app.post('/sessions', async (req, res) => {
   const { username, password } = req.body;
-
   try {
-    const result = await query("UPDATE users SET username = ?, password = ? WHERE userId = ?", [username, password, id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).send('User not found');
+    const userResult = await query('SELECT * FROM users WHERE username = ?', [username]);
+
+    const user = userResult[0];
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
     }
-    res.send('User updated');
+
+    if (user.password === password) {
+      const token = generateOTP();
+
+      const sessionsResult = await query('INSERT INTO sessions (user_id, token) VALUES (?, ?)', [
+        user.id,
+        token,
+      ]);
+
+      const sessionsId = sessionsResult.insertId;
+
+      res.status(200).json({ message: 'Login successful', token: token, sessionsId: sessionsId });
+    } else {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
   } catch (error) {
-    res.status(500).send('Server error');
+    console.error('Error during login:', error);
+    res.status(500).json({ message: 'Error during login', error: error.message });
   }
 });
 
-// DELETE
-app.delete('/users/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await query("DELETE FROM users WHERE userId = ?", [id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).send('User not found');
-    }
-    res.send('User deleted');
-  } catch (error) {
-    res.status(500).send('Server error');
-  }
-});
-
-// --------------------
-
-// Starta servern
+// Start the server
 app.listen(port, () => {
-  console.log(`Bankens backend körs på http://localhost:${port}`);
+  console.log(`Bank backend running at http://localhost:${port}`);
 });

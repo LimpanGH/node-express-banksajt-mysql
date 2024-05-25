@@ -1,24 +1,50 @@
-## EJ klar, det finns en solution på https://github.com/LimpanGH/node-express-banksajt-mysql-solution
+Denna är min,det finns även en solution på https://github.com/LimpanGH/node-express-banksajt-mysql-solution
 
 # Skapa backend i Node.js och Express för Banksajt - med MySQL-databas
 
 ### Köra applikationen:
 
-1. CDa till mappen Frontend och kör:
+1. Starta MAMP och gå in i myPHPadmin
+2. CDa till mappen Frontend och kör:
    ```
    npm run dev
    ```
-2. CDa till mappen Backend och kör:
+3. CDa till mappen Backend och kör:
    ```
    npm start
    ```
-3. Gå till browsern och skapa en user, logga in usern, gör en deposit.
-4. Testa även med Thunder Client genom att putta in olika object i body, tex denna, till localhost:3000/users:
-   ```{
-   "username": "Linus",
-   "password": "tjosan"
-   }
-   ```
+4. Gå till browsern och skapa en user, logga in usern, gör en deposit.
+5. Testa även med Thunder Client genom att putta in olika object i body, tex dessa
+
+```
+POST localhost:3000/users
+```
+
+med detta i body
+
+```
+{
+"username": "binggo",
+"password": "bonggo"
+}
+```
+
+eller denna:
+
+```
+POST localhost:3000/sessions
+```
+
+med detta i body
+
+```
+{
+"username": "binggo",
+"password": "bonggo"
+}
+```
+
+Testa även i browsern.
 
 ## Utgå från föregående uppgift, [https://github.com/chasacademy-sandra-larsson/node-express-banksajt]()
 
