@@ -1,3 +1,5 @@
+Kan spapa en user och logga in. får felmeddelande vid inlogg och ingen account skapas, kan inte sätta in pengar.
+
 Denna är min,det finns även en solution på https://github.com/LimpanGH/node-express-banksajt-mysql-solution
 
 # Skapa backend i Node.js och Express för Banksajt - med MySQL-databas
